@@ -1,0 +1,4 @@
+python-openstackclient>=6
+python-octaviaclient
+python-glanceclient
+python-manilaclient==3.4.0
