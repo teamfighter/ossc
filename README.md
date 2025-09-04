@@ -192,3 +192,24 @@ docker run --rm -it \
   -v "$(pwd):/workspace" -w /workspace \
   ossc:latest --profile dev --catalog app server list
 ```
+
+## Тесты
+
+- Запуск напрямую:
+
+```bash
+python3 -m unittest discover -v
+```
+
+- Через виртуальное окружение проекта:
+
+```bash
+make setup
+.venv/bin/python -m unittest -v
+```
+
+- Упрощённо одной командой:
+
+```bash
+make test
+```

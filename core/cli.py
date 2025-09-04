@@ -183,8 +183,12 @@ def handle_default(args, repo_root: Path):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     first_pos = _first_positional(argv)
+    # If user requested help without specifying a subcommand, show full help including subcommands
+    if first_pos is None and any(tok in ("-h", "--help") for tok in argv):
+        parser = build_parser()
+        args = parser.parse_args(argv)
     # Route to subcommands only if the first positional is a known subcommand
-    if first_pos in {"config", "report"}:
+    elif first_pos in {"config", "report"}:
         parser = build_parser()
         args = parser.parse_args(argv)
     else:

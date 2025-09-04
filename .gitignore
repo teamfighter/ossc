@@ -33,6 +33,7 @@ Thumbs.db
 # Project outputs
 out/
 oss_profiles.json
+AGENTS.md
 
 # Logs
 *.log
