@@ -79,7 +79,7 @@ def handle(args, repo_root: Path):
             env = os.environ.copy()
             env.update(rc_env)
             username = resolve_username(args, pdata, rc_env)
-            password = resolve_password(args, pdata)
+            password = resolve_password(args, pdata, rc_env)
             if username:
                 env["OS_USERNAME"] = username
             if password:

@@ -115,7 +115,7 @@ def handle_default(args, repo_root: Path):
 
     profile_entry = profiles.get("profiles", {}).get(args.profile, {})
     need_username = not resolve_username(args, profile_entry, rc_env)
-    need_password = not resolve_password(args, profile_entry)
+    need_password = not resolve_password(args, profile_entry, rc_env)
     if sys.stdin.isatty() and (need_username or need_password):
         print("First-time setup for profile '%s'." % args.profile)
         rc_user = rc_env.get("OS_USERNAME") or profile_entry.get("username")
@@ -134,7 +134,7 @@ def handle_default(args, repo_root: Path):
             save_profiles_config(config_path(), profiles)
 
     effective_profile = profiles.get("profiles", {}).get(args.profile, {})
-    password = resolve_password(args, effective_profile)
+    password = resolve_password(args, effective_profile, rc_env)
     username = resolve_username(args, effective_profile, rc_env)
 
     env = os.environ.copy()

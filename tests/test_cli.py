@@ -39,6 +39,26 @@ class TestCLI(unittest.TestCase):
         rc = cli.handle_default(args, cli.Path('.'))
         self.assertEqual(rc, 0)
 
+    @mock.patch('core.cli.ensure_openstack_available')
+    @mock.patch('core.cli.get_catalog_env')
+    @mock.patch('core.cli.ensure_profiles_structure')
+    @mock.patch('core.cli.load_profiles_config')
+    def test_no_prompt_if_rc_has_password(self, m_load, m_struct, m_getenv, m_ensure_os):
+        # RC provides OS_PASSWORD; profile has no password
+        m_load.return_value = ({'profiles': {'dev': {}}}, None, False)
+        m_struct.side_effect = lambda x: x
+        m_getenv.return_value = {'OS_AUTH_URL': 'u', 'OS_USERNAME': 'user', 'OS_PASSWORD': 'fromrc'}
+        m_ensure_os.return_value = ({}, '/bin/openstack')
+        parser = cli.build_default_parser()
+        args = parser.parse_args(['--profile', 'dev', '--catalog', 'app', '--dry-run', 'server', 'list'])
+        buf = io.StringIO()
+        with mock.patch('sys.stdout', new=buf):
+            with mock.patch('sys.stdin.isatty', return_value=True):
+                rc = cli.handle_default(args, cli.Path('.'))
+        out = buf.getvalue()
+        self.assertEqual(rc, 0)
+        self.assertNotIn('First-time setup for profile', out)
+
     def test_top_level_help_includes_subcommands(self):
         buf = io.StringIO()
         with mock.patch('sys.stdout', new=buf):

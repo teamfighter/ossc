@@ -64,12 +64,21 @@ class TestConfig(unittest.TestCase):
 
     def test_resolve_password_precedence(self):
         args = SimpleNamespace(password='flag')
-        self.assertEqual(config.resolve_password(args, {'password': 'p'}), 'flag')
+        self.assertEqual(config.resolve_password(args, {'password': 'p'}, {}), 'flag')
         args = SimpleNamespace(password=None)
         os.environ['OSS_PASSWORD'] = 'envpw'
-        self.assertEqual(config.resolve_password(args, {'password': 'p'}), 'envpw')
+        self.assertEqual(config.resolve_password(args, {'password': 'p'}, {}), 'envpw')
         del os.environ['OSS_PASSWORD']
-        self.assertEqual(config.resolve_password(args, {'password': 'p'}), 'p')
+        os.environ['OS_PASSWORD'] = 'ospw'
+        self.assertEqual(config.resolve_password(args, {'password': 'p'}, {}), 'ospw')
+        del os.environ['OS_PASSWORD']
+        self.assertEqual(config.resolve_password(args, {'password': 'p'}, {}), 'p')
+        # password_b64
+        import base64
+        b64 = base64.b64encode(b'secret').decode('ascii')
+        self.assertEqual(config.resolve_password(args, {'password_b64': b64}, {}), 'secret')
+        # rc_env fallback
+        self.assertEqual(config.resolve_password(args, {}, {'OS_PASSWORD': 'rcpw'}), 'rcpw')
 
     def test_resolve_username_precedence(self):
         rc_env = {'OS_USERNAME': 'rcuser'}
@@ -85,4 +94,3 @@ class TestConfig(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

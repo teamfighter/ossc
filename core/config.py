@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 from typing import Dict, Tuple
+import base64
 
 
 def config_path() -> Path:
@@ -79,12 +80,29 @@ def get_catalog_env(config: Dict, profile: str, catalog: str):
     return dict(cat)
 
 
-def resolve_password(args, profile_entry: Dict):
+def resolve_password(args, profile_entry: Dict, rc_env: Dict = None):
+    # Highest priority: explicit flag
     if getattr(args, "password", None):
         return args.password
+    # Env vars (allow both project-specific and OS_* for convenience)
     if os.getenv("OSS_PASSWORD"):
         return os.getenv("OSS_PASSWORD")
-    return (profile_entry or {}).get("password")
+    if os.getenv("OS_PASSWORD"):
+        return os.getenv("OS_PASSWORD")
+    # Stored plain password in profile
+    if (profile_entry or {}).get("password"):
+        return profile_entry.get("password")
+    # Stored as base64 in profile (optional)
+    b64 = (profile_entry or {}).get("password_b64")
+    if b64:
+        try:
+            return base64.b64decode(b64).decode("utf-8")
+        except Exception:
+            pass
+    # From RC/config catalog environment
+    if (rc_env or {}).get("OS_PASSWORD"):
+        return rc_env.get("OS_PASSWORD")
+    return None
 
 
 def resolve_username(args, profile_entry: Dict, rc_env: Dict):
