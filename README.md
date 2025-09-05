@@ -1,115 +1,127 @@
-# OSSC — обёртка над OpenStack CLI
+# OSSC — OpenStack CLI Wrapper
 
-Небольшая утилита, которая читает `rc-*.sh` (или их импорт в конфиг), применяет переменные `OS_*` и прозрачно проксирует команды в `openstack`.
+[![CI](https://github.com/teamfighter/ossc/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/teamfighter/ossc/actions/workflows/ci.yml)
+[![Release](https://github.com/teamfighter/ossc/actions/workflows/release.yml/badge.svg)](https://github.com/teamfighter/ossc/actions/workflows/release.yml)
 
-## Предпочтительно: через Docker
+OSSC reads OpenStack RC files (`rc-*.sh`) or their imported equivalents in a user config, applies the `OS_*` environment, and proxies commands to the `openstack` CLI.
 
-- Почему так лучше:
-  - не нужен локальный Python и клиенты OpenStack
-  - изоляция окружения, воспроизводимость
-  - конфиг пользователя монтируется и сохраняется вне контейнера
+## Prebuilt Images (Recommended)
 
-1) Соберите образ
+Images are published to the GitHub Container Registry. The `main` tag is rebuilt on every commit to the default branch, while version tags are produced for releases. Pull an image and source the helper script:
+
 ```bash
-docker build -t ossc:latest .
+export OSSC_VERSION=v0.0.0
+docker pull ghcr.io/teamfighter/ossc:$OSSC_VERSION
+curl -O https://raw.githubusercontent.com/teamfighter/ossc/main/ossc-docker.sh
+chmod +x ossc-docker.sh
+source ossc-docker.sh
+ossc --help
 ```
 
-2) Загрузите враппер-функцию в текущую сессию
-```bash
-source ./ossc-docker.sh
-```
+Notes
+- Inside the container `HOME=/tmp`, `XDG_CONFIG_HOME=/tmp/.config`.
+- Your config is stored on the host: `~/.config/ossc/profiles.json` (the wrapper mounts it into the container).
+- You can override the image with `OSSC_IMAGE` before `source ./ossc-docker.sh`.
+- Prefer release tags for production; `main` is available for latest development builds: `docker pull ghcr.io/teamfighter/ossc:main`.
 
-3) Импортируйте RC-файлы (они должны быть доступны в рабочей директории)
+## Quick Start
+
+1) Import issued RC files into config (ensure they exist in your working directory):
 ```bash
 ossc config import-rc --profile dev  --catalog app --rc-file dev/rc-app.sh
 ossc config import-rc --profile prod --catalog net --rc-file prod/rc-net.sh
-# или пакетно по директории
+# or batch import by directory
 ossc config import-rc --profile dev --rc-dir ./dev
 ```
 
-4) Запускайте команды OpenStack
+2) Run an OpenStack command
 ```bash
 ossc --profile dev --catalog app server list
 ```
 
-Примечания
-- Внутри контейнера `HOME=/tmp`, `XDG_CONFIG_HOME=/tmp/.config`.
-- Файл конфига хранится на хосте: `~/.config/ossc/profiles.json` (враппер монтирует его в контейнер).
-- Можно переопределить образ переменной `OSSC_IMAGE` до `source ./ossc-docker.sh`.
-
-## Альтернатива: локально (Python)
-
-1) Требуется Python 3.8+
-2) Подготовьте окружение:
+Helpful commands
 ```bash
-make setup
-```
-3) Запуск:
-```bash
-./ossc --profile <p> --catalog <c> <openstack args>
-```
-
-Полезно
-```bash
-# Справка по обёртке и подкомандам
+# Wrapper and subcommands help
 ossc -h
 ossc config -h
 ossc report -h
 
-# Передать аргументы напрямую в openstack
+# Pass args directly to OpenStack
 ossc --profile <p> --catalog <c> -- --help
 
-# Проверка без выполнения
+# Dry-run (show env and command)
 ossc --profile <p> --catalog <c> --dry-run server list
 ```
 
-## Конфиг и креды
+## Config & Credentials
 
-- Путь конфига: `~/.config/ossc/profiles.json` (или `$XDG_CONFIG_HOME/ossc/profiles.json`).
-- Приоритет значений:
-  1) флаги `--username` / `--password`
-  2) переменные окружения `OSS_USERNAME` / `OSS_PASSWORD`
-  3) пользовательский конфиг `profiles.json`
-  4) `OS_USERNAME` из RC (только для имени пользователя)
-- Секреты не хранятся в репозитории.
+- Config path: `~/.config/ossc/profiles.json` (or `$XDG_CONFIG_HOME/ossc/profiles.json`).
+- Precedence:
+  1) flags `--username` / `--password`
+  2) env vars `OSS_USERNAME` / `OSS_PASSWORD`
+  3) user config `profiles.json`
+  4) `OS_USERNAME` from RC (username only)
+- Secrets are not stored in the repository.
 
-## Подкоманды
+## Subcommands
 
-- `config import-rc`: импорт RC-файлов в конфиг (одиночный или пакетный `--rc-dir`).
-- `config list`: список профилей и их каталогов.
-- `config set-cred`: установка пароля для профиля (логин берётся из RC/конфига каталога).
-- `report [-f table|json|yaml|csv|value] [--out DIR]`: сформировать отчёты `openstack server list` по выбранным профилям/каталогам.
+- `config import-rc`: import RC files into user config (single file or batch via `--rc-dir`).
+- `config list`: list profiles and their catalogs.
+- `config set-cred`: set a password for a profile (username comes from RC/config of a catalog).
+- `report [-f table|json|yaml|csv|value] [--out DIR]`: generate `openstack server list` reports for selected profiles/catalogs.
 
-Примеры
+Examples
 ```bash
-# Список профилей/каталогов
+# Profiles/catalogs list
 ossc config list
 
-# Пароль для профиля
-ossc config set-cred --profile dev                      # спросит пароль скрытым вводом
-ossc config set-cred --profile dev --password 'secret'  # без запроса
+# Set password for a profile
+ossc config set-cred --profile dev                      # prompts masked input
+ossc config set-cred --profile dev --password 'secret'  # non-interactive
 
-# Отчёты
-ossc report                               # все профили/каталоги
-ossc --profile dev report                  # только профиль dev
-ossc --profile dev --catalog app report    # только dev/app
-ossc --catalog app report                  # все профили с каталогом app
+# Reports
+ossc report                               # all profiles/catalogs
+ossc --profile dev report                  # only profile dev
+ossc --profile dev --catalog app report    # only dev/app
+ossc --catalog app report                  # all profiles with catalog app
 ```
 
-## Тесты
+## Local Development (Optional)
+
+Requires Python 3.8+
+```bash
+make setup
+./ossc --profile <p> --catalog <c> <openstack args>
+```
+
+## Tests
 
 ```bash
-make test                   # создаст .venv и запустит unittest
-# или
+make test
+# or
 python3 -m unittest -v
 ```
 
-## Устройство
+## Internals
 
-- `core/cli.py` — парсинг CLI, роутинг и прокси вызова
-- `core/config.py` — чтение/запись `profiles.json`, структура, резолв кредов
-- `core/rc.py` — парсинг `rc-*.sh`, построение путей
-- `core/env.py` — поиск/подготовка `openstack` (локальный .venv, пользовательский venv)
-- `core/commands/config_cmd.py` — команды `config`
-- `core/commands/report_cmd.py` — команда `report`
-- Точки входа: `ossc` (bash-скрипт), `ossc.py`
+- `core/cli.py` — CLI parsing, routing, proxy execution
+- `core/config.py` — read/write `profiles.json`, structure, credentials resolution
+- `core/rc.py` — `rc-*.sh` parsing, path building
+- `core/env.py` — `openstack` discovery/bootstrapping (local .venv, user venv)
+- `core/commands/config_cmd.py` — `config` commands
+- `core/commands/report_cmd.py` — `report` command
+- Entrypoints: `ossc` (bash wrapper), `ossc.py`
+
+## GHCR Images
+
+Images are published to the GitHub Container Registry. The main tag is rebuilt on every commit to the default branch, while version tags are produced for releases. Pull an image and source the helper script:
+
+```bash
+export OSSC_VERSION=v0.0.0
+docker pull ghcr.io/teamfighter/ossc:$OSSC_VERSION
+curl -O https://raw.githubusercontent.com/teamfighter/ossc/main/ossc-docker.sh
+chmod +x ossc-docker.sh
+source ossc-docker.sh
+ossc --help
+```
+
