@@ -10,7 +10,7 @@ OSSC reads OpenStack RC files (`rc-*.sh`) or their imported equivalents in a use
 Images are published to the GitHub Container Registry. The `main` tag is rebuilt on every commit to the default branch, while version tags are produced for releases. Pull an image and source the helper script:
 
 ```bash
-export OSSC_VERSION=v0.0.0
+export OSSC_VERSION=v0.0.1
 docker pull ghcr.io/teamfighter/ossc:$OSSC_VERSION
 curl -O https://raw.githubusercontent.com/teamfighter/ossc/main/ossc-docker.sh
 chmod +x ossc-docker.sh
@@ -117,7 +117,7 @@ python3 -m unittest -v
 Images are published to the GitHub Container Registry. The main tag is rebuilt on every commit to the default branch, while version tags are produced for releases. Pull an image and source the helper script:
 
 ```bash
-export OSSC_VERSION=v0.0.0
+export OSSC_VERSION=v0.0.1
 docker pull ghcr.io/teamfighter/ossc:$OSSC_VERSION
 curl -O https://raw.githubusercontent.com/teamfighter/ossc/main/ossc-docker.sh
 chmod +x ossc-docker.sh
